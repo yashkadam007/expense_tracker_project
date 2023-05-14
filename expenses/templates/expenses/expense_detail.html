@@ -1,0 +1,25 @@
+{% extends "expenses/base.html" %}
+
+{% block content%}
+
+  <div class="container">
+    <div class="card text-center mt-3">
+      <div class="card-header">
+        {{ object.description }}
+      </div>
+      <div class="card-body">
+        <h5 class="card-title">{{ object.amount }}</h5>
+        <p class="card-text">{{ object.category }}</p>
+        {% if object.user == user %}
+          <a href="{% url 'expense-update' object.id %}" class="btn btn-primary">Edit expense</a>
+          <a href="{% url 'expense-delete' object.id %}" class="btn btn-danger">Delete expense</a>
+        {% endif %}
+        
+      </div>
+      <div class="card-footer text-body-secondary">
+        {{ object.date }}
+      </div>
+    </div>
+  </div>
+    
+{% endblock content %}

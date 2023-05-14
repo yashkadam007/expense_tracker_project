@@ -1,9 +1,13 @@
 {% extends "expenses/base.html" %}
 {% load crispy_forms_tags %}
 {% block content %}
-    <div>
+    <div class="container">
         <div class="media">
-            <img class="rounded-circle " src="{{ user.profile.image.url }}" >
+            <div class="d-flex justify-content-center mt-3">
+                <div>
+                  <img class="rounded-circle" src="{{ user.profile.image.url }}" >
+                </div>
+              </div>              
             <div>
                 <h2>{{ user.username }}</h2>
                 <p class="text-secondary">{{ user.email }}</p>
