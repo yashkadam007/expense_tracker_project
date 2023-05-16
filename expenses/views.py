@@ -8,15 +8,18 @@ from .models import Expense, Category
 from django.db.models import Sum
 from django.contrib import messages
 from .insights import generate_pie_chart, generate_line_chart
+from django.views.decorators.cache import cache_page
+from django.core.cache import cache
+
 
 
 
 
 # Create your views here.
-@login_required
-def home(request):
-    expenses = Expense.objects.filter(user=request.user)
-    return render(request, 'expenses/home.html', {'expenses': expenses})
+# @login_required
+# def home(request):
+#     expenses = Expense.objects.filter(user=request.user)
+#     return render(request, 'expenses/home.html', {'expenses': expenses})
 
 @method_decorator(login_required, name='dispatch')
 class ExpenseListView(ListView):
