@@ -1,4 +1,4 @@
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.utils.decorators import method_decorator
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
@@ -8,8 +8,8 @@ from .models import Expense, Category
 from django.db.models import Sum
 from django.contrib import messages
 from .insights import generate_pie_chart, generate_line_chart
-from django.views.decorators.cache import cache_page
-from django.core.cache import cache
+from django.urls import reverse
+from .tasks import download_expense_data_task
 
 
 
@@ -31,6 +31,11 @@ class ExpenseListView(ListView):
     def get_queryset(self):
         queryset = super().get_queryset()
         return queryset.filter(user=self.request.user)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['download_url'] = reverse('download_expense_data')
+        return context
 
 @method_decorator(login_required, name='dispatch')
 class ExpenseDetailView(DetailView):
@@ -102,3 +107,30 @@ def visualizations(request):
 
     return render(request, 'expenses/visualizations.html', context=context)
 
+#  Download without celery
+# @login_required
+# def download_expense_data(request):
+#     expenses = Expense.objects.filter(user=request.user)
+
+#     # Create the CSV file
+#     response = HttpResponse(content_type='text/csv')
+#     response['Content-Disposition'] = 'attachment; filename="expense_data.csv"'
+
+#     # Write the CSV data
+#     writer = csv.writer(response)
+#     writer.writerow(['Amount', 'Description', 'Category', 'Date'])
+#     for expense in expenses:
+#         writer.writerow([expense.amount, expense.description, expense.category.name, expense.date])
+
+#     return response
+
+@login_required
+def download_expense_data(request):
+    task = download_expense_data_task.delay(request.user.id)
+    csv_data = task.get()
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="expense_data.csv"'
+    response.write(csv_data)
+
+    return response
