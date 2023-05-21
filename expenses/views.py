@@ -10,6 +10,11 @@ from django.contrib import messages
 from .insights import generate_pie_chart, generate_line_chart
 from django.urls import reverse
 from .tasks import download_expense_data_task
+from .models import Expense
+from django.db.models import Q
+from decimal import Decimal
+from datetime import datetime
+from calendar import month_name
 
 
 
@@ -21,12 +26,52 @@ from .tasks import download_expense_data_task
 #     expenses = Expense.objects.filter(user=request.user)
 #     return render(request, 'expenses/home.html', {'expenses': expenses})
 
+def search_expenses(request):
+    search_query = request.GET.get('search')
+    expenses = Expense.objects.filter(user=request.user)
+
+    if search_query and search_query.startswith('>'):
+        try:
+            amount = Decimal(search_query[1:])
+            expenses = expenses.filter(amount__gt=amount)
+        except ValueError:
+            pass
+    elif search_query and search_query.startswith('<'):
+        try:
+            amount = Decimal(search_query[1:])
+            expenses = expenses.filter(amount__lt=amount)
+        except ValueError:
+            pass
+    else:
+        # Check if the search query represents a month
+        month = None
+        for index, month_name_str in enumerate(month_name[1:]):
+            if search_query.lower() == month_name_str.lower():
+                month = index + 1
+                break
+
+        if month:
+            year = datetime.now().year
+            expenses = expenses.filter(date__month=month, date__year=year)
+        else:
+            expenses = expenses.filter(
+                Q(description__icontains=search_query) |
+                Q(category__name__icontains=search_query)
+            )
+
+    context = {
+        'expenses': expenses,
+        'search_query': search_query
+    }
+    return render(request, 'expenses/search_expenses.html', context)
+
 @method_decorator(login_required, name='dispatch')
 class ExpenseListView(ListView):
     model = Expense
     template_name = 'expenses/home.html'
     context_object_name = 'expenses'
     ordering = ['-date']
+    paginate_by = 10
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -100,9 +145,12 @@ def visualizations(request):
             expense_data[category_name] = []
         expense_data[category_name].append(expense['total'])
 
+    total_expenses = Expense.objects.filter(user=curr_user).aggregate(total=Sum('amount'))['total'] or 0
+
     context = {
         'image_uri': generate_pie_chart(expense_data),
-        'image_uri_line_chart': generate_line_chart(expense_data, x_values, expense_data)
+        'image_uri_line_chart': generate_line_chart(expense_data, x_values, expense_data),
+        'total_expenses': total_expenses
     }
 
     return render(request, 'expenses/visualizations.html', context=context)

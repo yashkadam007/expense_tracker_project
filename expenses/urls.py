@@ -10,4 +10,5 @@ urlpatterns = [
     path('expense/<int:pk>/delete/', ExpenseDeleteView.as_view(), name='expense-delete'),
     path('visualizations/', visualizations, name='visualizations'),
     path('download/', views.download_expense_data, name='download_expense_data'),
+    path('search/', views.search_expenses, name='search_expenses'),
 ]
